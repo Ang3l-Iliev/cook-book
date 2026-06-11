@@ -9,8 +9,6 @@ import CreateRecipe from './pages/CreateRecipe';
 import MealPlans from './pages/MealPlans';
 import Header from './components/Header';
 
-
-
 function App() {
   return (
     <AuthProvider>
