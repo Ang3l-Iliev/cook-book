@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { getRecipeById, deleteRecipe } from '../services/recipeApi';
-import { getComments, addComment } from '../services/commentApi';
+import { getComments, addComment, deleteComment } from '../services/commentApi';
 
 const RecipeDetail = () => {
     const { id } = useParams();
@@ -15,15 +15,23 @@ const RecipeDetail = () => {
     const [newComment, setNewComment] = useState('');
 
     useEffect(() => {
+        const controller = new AbortController();
+
         const fetchData = async () => {
-            const recipeData = await getRecipeById(id);
-            console.log('recipe:', recipeData);
-            const commentsData = await getComments(id);
-            setRecipe(recipeData);
-            setComments(commentsData);
-            setLoading(false);
+            try {
+                const recipeData = await getRecipeById(id);
+                const commentsData = await getComments(id);
+                setRecipe(recipeData);
+                setComments(commentsData);
+                setLoading(false);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    setLoading(false);
+                }
+            }
         };
         fetchData();
+        return () => controller.abort();
     }, [id]);
 
     const handleAddComment = async (e) => {
@@ -32,6 +40,11 @@ const RecipeDetail = () => {
         const comment = await addComment(id, newComment);
         setComments([...comments, comment]);
         setNewComment('');
+    };
+
+    const handleDeleteComment = async (commentId) => {
+        await deleteComment(id, commentId);
+        setComments(comments.filter(c => c.id !== commentId));
     };
 
     const handleDelete = async () => {
@@ -49,7 +62,7 @@ const RecipeDetail = () => {
                     <p>{recipe.description}</p>
                     <p>{recipe.difficulty} • {recipe.cooking_time} min</p>
                     <p>Author: {recipe.author_name}</p>
-                    {user && user.id === recipe.author_id && (
+                    {user && user.id === Number(recipe.author_id) && (
                         <button onClick={handleDelete}>Remove recipe</button>
                     )}
                 </div>
@@ -68,6 +81,9 @@ const RecipeDetail = () => {
             {comments.map(comment => (
                 <div key={comment.id}>
                     <p><strong>{comment.author_name}</strong>: {comment.content}</p>
+                    {user && user.id === Number(comment.author_id) && (
+                        <button onClick={() => handleDeleteComment(comment.id)}>Delete</button>
+                    )}
                 </div>
             ))}
             {user && (

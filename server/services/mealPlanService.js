@@ -1,25 +1,31 @@
-const db = require('../db/index')
+const mealPlanRepository = require('../repositories/mealPlanRepository');
+const { NotFoundError } = require('../utils/errors');
+const { recipeRepository } = require('./recipeService');
 
-const addMealPlan = async (userId, recipeId, date) => {
-    const result = await db.query(
-        'INSERT INTO meal_plans (user_id, recipe_id, date) VALUES ($1, $2, $3) RETURNING *',
-        [userId, recipeId, date]
-    );
-    return result.rows[0];
-};
-const deleteMealPlan = async (userId, id) => {
-    const result = await db.query("DELETE FROM meal_plans WHERE user_id = $1 AND id=$2", [userId, id])
-    return { message: 'Meal plan deleting successfully' }
+
+class MealPlanService {
+    constructor(mealPlanRepository) {
+        this.mealPlanRepository = mealPlanRepository;
+    }
+
+    async addMealPlan(userId, recipeId, date) {
+        const recipe = await recipeRepository.findByIdRaw(recipeId)
+        if (!recipe) {
+            throw new NotFoundError('Recipe not found');
+        }
+        return await this.mealPlanRepository.create(userId, recipeId, date);
+    }
+
+    async getMealPlans(userId) {
+        return await this.mealPlanRepository.findAllByUser(userId);
+    }
+    async deleteMealPlan(userId, id) {
+        const rowCount = await this.mealPlanRepository.delete(userId, id);
+        if (rowCount === 0) {
+            throw new NotFoundError('Meal plan not found');
+        }
+        return { message: 'Meal plan deleted successfully' };
+    }
 }
-const getMealPlans = async (userId) => {
-    const result = await db.query(`
-        SELECT meal_plans.*, recipes.title, recipes.cooking_time, recipes.difficulty, recipes.image_url
-        FROM meal_plans
-        JOIN recipes ON meal_plans.recipe_id = recipes.id
-        WHERE meal_plans.user_id = $1
-        ORDER BY meal_plans.date
-    `, [userId]);
-    return result.rows;
-};
 
-module.exports = { addMealPlan, deleteMealPlan, getMealPlans };
+module.exports = new MealPlanService(mealPlanRepository);

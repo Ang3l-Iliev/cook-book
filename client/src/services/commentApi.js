@@ -8,8 +8,8 @@ const addComment = async (recipeId, content) => {
     return await post(`/recipes/${recipeId}/comments`, { content })
 }
 
-const deleteComment = async (id) => {
-    return await del(`/comments/${id}`)
-}
+const deleteComment = async (recipeId, id) => {
+    return await del(`/recipes/${recipeId}/comments/${id}`);
+};
 
-export { getComments, addComment, del }
+export { getComments, addComment, deleteComment }

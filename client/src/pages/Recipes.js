@@ -23,9 +23,9 @@ const Recipes = () => {
         if (!user) return;
         const isFavorite = favorites.includes(recipeId);
         if (isFavorite) {
-            setFavorites(favorites.filter(id => id !== recipeId));
+            setFavorites(prev => prev.filter(id => id !== recipeId));
         } else {
-            setFavorites([...favorites, recipeId]);
+            setFavorites(prev => [...prev, recipeId]);
         }
         try {
             if (isFavorite) {
@@ -35,9 +35,9 @@ const Recipes = () => {
             }
         } catch (err) {
             if (isFavorite) {
-                setFavorites([...favorites, recipeId]);
+                setFavorites(prev => [...prev, recipeId]);
             } else {
-                setFavorites(favorites.filter(id => id !== recipeId));
+                setFavorites(prev => prev.filter(id => id !== recipeId));
             }
         }
     };
@@ -66,6 +66,22 @@ const Recipes = () => {
                     value={filters.maxTime}
                     onChange={(e) => setFilters({ ...filters, maxTime: e.target.value })}
                 />
+                <select
+                    value={filters.sortBy}
+                    onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+                >
+                    <option value="created_at">Newest</option>
+                    <option value="cooking_time">Cooking Time</option>
+                    <option value="title">Title</option>
+                    <option value="difficulty">Difficulty</option>
+                </select>
+                <select
+                    value={filters.sortOrder}
+                    onChange={(e) => setFilters({ ...filters, sortOrder: e.target.value })}
+                >
+                    <option value="DESC">Descending</option>
+                    <option value="ASC">Ascending</option>
+                </select>
             </div>
 
             {loading && <p>Loading...</p>}

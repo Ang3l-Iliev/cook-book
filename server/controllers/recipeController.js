@@ -1,6 +1,6 @@
 const recipeService = require("../services/recipeService");
 
-const getAllRecipes = async (req, res) => {
+const getAllRecipes = async (req, res, next) => {
     try {
         const { search, difficulty, maxTime, page, limit } = req.query;
         const result = await recipeService.getAllRecipes({
@@ -12,11 +12,11 @@ const getAllRecipes = async (req, res) => {
         });
         res.json(result);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err)
     }
 };
 
-const getRecipeById = async (req, res) => {
+const getRecipeById = async (req, res, next) => {
     try {
         const recipeId = req.params.id;
         const recipe = await recipeService.getRecipeById(recipeId);
@@ -25,38 +25,38 @@ const getRecipeById = async (req, res) => {
         }
         res.json(recipe);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err)
     }
 };
 
-const createRecipe = async (req, res) => {
+const createRecipe = async (req, res, next) => {
     try {
         const authorId = req.user.userId;
         const recipe = await recipeService.createRecipe(authorId, req.body);
         res.status(201).json(recipe);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+    } catch (err) {
+        next(err)
     }
 };
 
-const updateRecipe = async (req, res) => {
+const updateRecipe = async (req, res, next) => {
     try {
         const id = req.params.id
         const authorId = req.user.userId
         const result = await recipeService.updateRecipe(id, authorId, req.body)
         res.status(201).json(result);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+    } catch (err) {
+        next(err)
     }
 }
-const deleteRecipe = async (req, res) => {
+const deleteRecipe = async (req, res, next) => {
     try {
         const id = req.params.id
         const authorId = req.user.userId
         const result = await recipeService.deleteRecipe(id, authorId)
         res.json(result);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+    } catch (err) {
+        next(err)
     }
 }
 module.exports = { getAllRecipes, getRecipeById, createRecipe, updateRecipe, deleteRecipe };

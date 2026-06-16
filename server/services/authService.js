@@ -1,63 +1,59 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../db/index');
+const userRepository = require('../repositories/userRepository');
+const { ConflictError, UnauthorizedError } = require('../utils/errors');
 
-const register = async (email, username, password) => {
-    const existingUser = await db.query(
-        "SELECT id FROM users WHERE email = $1 OR username = $2",
-        [email, username]
-    );
-
-    if (existingUser.rows.length > 0) {
-        throw new Error('Email or username already exists');
+class AuthService {
+    constructor(userRepository) {
+        this.userRepository = userRepository;
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    async register(email, username, password) {
+        const existing = await this.userRepository.findByEmailOrUsername(email, username);
+        if (existing) {
+            throw new ConflictError('Email or username already exists');
+        }
 
-    const result = await db.query(
-        'INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3) RETURNING id, email, username',
-        [email, username, passwordHash]
-    );
+        const passwordHash = await bcrypt.hash(password, 10);
+        const user = await this.userRepository.create(email, username, passwordHash);
 
-    const user = result.rows[0];
+        if (!user) {
+            throw new ConflictError('Email or username already exists');
+        }
 
-    const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
-    );
+        const token = jwt.sign(
+            { userId: user.id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
 
-    return { user, token };
-};
-
-const login = async (email, password) => {
-    const findUser = await db.query(
-        'SELECT * FROM users WHERE email = $1',
-        [email]
-    );
-
-    if (findUser.rows.length === 0) {
-        throw new Error('Invalid credentials');
+        return { user, token };
     }
 
-    const user = findUser.rows[0];
+    async login(email, password) {
+        const user = await this.userRepository.findByEmail(email);
 
-    const isValid = await bcrypt.compare(password, user.password_hash);
+        if (!user) {
+            throw new UnauthorizedError('Invalid credentials');
+        }
 
-    if (!isValid) {
-        throw new Error('Invalid credentials');
+        const isValid = await bcrypt.compare(password, user.password_hash);
+
+        if (!isValid) {
+            throw new UnauthorizedError('Invalid credentials');
+        }
+
+        const token = jwt.sign(
+            { userId: user.id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        return {
+            user: { id: user.id, email: user.email, username: user.username },
+            token
+        };
     }
+}
 
-    const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
-    );
-
-    return {
-        user: { id: user.id, email: user.email, username: user.username },
-        token
-    };
-};
-
-module.exports = { register, login };
+module.exports = new AuthService(userRepository);

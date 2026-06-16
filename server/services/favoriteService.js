@@ -1,49 +1,33 @@
-const db = require('../db/index');
+const favoriteRepository = require('../repositories/favoriteRepository');
+const recipeRepository = require('../repositories/recipeRepository');
+const { NotFoundError } = require('../utils/errors');
 
-const addFavorite = async (userId, recipeId) => {
-    const exist = await db.query(
-        'SELECT * FROM favorite_recipes WHERE user_id = $1 AND recipe_id = $2',
-        [userId, recipeId]
-    );
-
-    if (exist.rows.length > 0) {
-        throw new Error('Recipe already in favorites');
+class FavoriteService {
+    constructor(favoriteRepository) {
+        this.favoriteRepository = favoriteRepository;
     }
 
-    await db.query(
-        'INSERT INTO favorite_recipes (user_id, recipe_id) VALUES ($1, $2)',
-        [userId, recipeId]
-    );
-
-    return { message: 'Recipe added to favorites' };
-};
-
-const removeFavorite = async (userId, recipeId) => {
-    const exist = await db.query(
-        'SELECT * FROM favorite_recipes WHERE user_id = $1 AND recipe_id = $2',
-        [userId, recipeId]
-    );
-
-    if (exist.rows.length === 0) {
-        throw new Error('Recipe not in favorites');
+    async addFavorite(userId, recipeId) {
+        const recipe = await recipeRepository.findByIdRaw(recipeId);
+        if (!recipe) {
+            throw new NotFoundError('Recipe not found');
+        }
+        await this.favoriteRepository.create(userId, recipeId);
+        return { message: 'Recipe added to favorites' };
     }
 
-    await db.query(
-        'DELETE FROM favorite_recipes WHERE user_id = $1 AND recipe_id = $2',
-        [userId, recipeId]
-    );
+    async removeFavorite(userId, recipeId) {
+        const existing = await this.favoriteRepository.findByUserAndRecipe(userId, recipeId);
+        if (!existing) {
+            throw new NotFoundError('Recipe not in favorites');
+        }
+        await this.favoriteRepository.delete(userId, recipeId);
+        return { message: 'Recipe removed from favorites' };
+    }
 
-    return { message: 'Recipe removed from favorites' };
-};
-const getFavorites = async (userId) => {
-    const result = await db.query(`
-        SELECT r.*, u.username as author_name
-        FROM recipes r
-        JOIN favorite_recipes f ON r.id = f.recipe_id
-        JOIN users u ON r.author_id = u.id
-        WHERE f.user_id = $1
-    `, [userId]);
-    return result.rows;
-};
+    async getFavorites(userId) {
+        return await this.favoriteRepository.findAllByUser(userId);
+    }
+}
 
-module.exports = { addFavorite, removeFavorite, getFavorites };
+module.exports = new FavoriteService(favoriteRepository);

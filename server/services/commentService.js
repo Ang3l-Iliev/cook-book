@@ -1,33 +1,30 @@
-const db = require('../db/index')
+const commentRepository = require('../repositories/commentRepository');
+const { NotFoundError, ForbiddenError } = require('../utils/errors');
 
-const addComment = async (recipeId, authorId, content) => {
-    const add = await db.query(
-        `INSERT INTO comments (recipe_id, author_id, content) VALUES ($1, $2, $3) RETURNING *`,
-        [recipeId, authorId, content]
-    );
-    return add.rows[0]
-}
-
-const deleteComment = async (id, authorId) => {
-    const existing = await db.query('SELECT * FROM comments WHERE id = $1', [id])
-    if (existing.rows.length === 0) {
-        throw new Error("Comment not found")
+class CommentService {
+    constructor(commentRepository) {
+        this.commentRepository = commentRepository;
     }
-    if (existing.rows[0].author_id != authorId) {
-        throw new Erro("Unauthorized")
+
+    async addComment(recipeId, authorId, content) {
+        return await this.commentRepository.create(recipeId, authorId, content);
     }
-    await db.query("DELETE FROM comments WHERE id =$1", [id])
-    return { message: 'Comment delete successfully' }
+
+    async deleteComment(id, authorId) {
+        const existing = await this.commentRepository.findById(id);
+        if (!existing) {
+            throw new NotFoundError('Comment not found');
+        }
+        if (existing.author_id != authorId) {
+            throw new ForbiddenError('You cannot delete this comment');
+        }
+        await this.commentRepository.delete(id);
+        return { message: 'Comment deleted successfully' };
+    }
+
+    async getComments(recipeId) {
+        return await this.commentRepository.findAllByRecipe(recipeId);
+    }
 }
 
-const getComments = async (recipeId) => {
-    const result = await db.query(`
-        SELECT comments.*, users.username as author_name
-        FROM comments
-        JOIN users ON comments.author_id = users.id
-        WHERE comments.recipe_id = $1
-        ORDER BY comments.created_at DESC
-    `, [recipeId]);
-    return result.rows
-}
-module.exports = {addComment, deleteComment, getComments}
+module.exports = new CommentService(commentRepository);
