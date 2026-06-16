@@ -49,3 +49,38 @@ npm start
 - Save favorite recipes
 - Leave comments
 - Build weekly meal plans
+
+## Running Tests
+cd server
+npm test
+
+## API Endpoints
+
+### Auth
+- POST /api/auth/register
+- POST /api/auth/login
+
+### Recipes
+- GET /api/recipes
+- GET /api/recipes/:id
+- POST /api/recipes
+- PUT /api/recipes/:id
+- DELETE /api/recipes/:id
+
+### Favorites
+- GET /api/favorites
+- POST /api/favorites/:recipeId
+- DELETE /api/favorites/:recipeId
+
+### Comments
+- GET /api/recipes/:id/comments
+- POST /api/recipes/:id/comments
+- DELETE /api/recipes/:id/comments/:commentId
+
+### Meal Plans
+- GET /api/meal-plans
+- POST /api/meal-plans
+- DELETE /api/meal-plans/:id
+
+## Health Check
+- GET /api/health
